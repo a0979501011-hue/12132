@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Quicksand", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Artistic Flair Theme Colors */
+  --color-cream-bg: #F7F4EB;
+  --color-cream-card: #FFFFFF;
+  --color-forest: #7BA862;
+  --color-forest-dark: #5F8D4E;
+  --color-leaf: #7BA862;
+  --color-cozy-gray: #E0E5D5;
+  --color-warm-brown: #8D6E63;
+  --color-warm-accent: #F2994A;
+  --color-coral: #EB5757;
+
+  /* Artistic Flair Shadows with 6px chunky cartoon shadows */
+  --shadow-cozy: 6px 6px 0px #E0E5D5;
+  --shadow-cozy-green: 6px 6px 0px #CBD2BE;
+}
+
+/* Base resets & cozy styling */
+body {
+  background-color: #F7F4EB;
+  color: #8D6E63;
+  font-family: var(--font-sans);
+  background-image: radial-gradient(#E0E5D5 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+/* Hide scrollbar defaults but keep functional track */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Cozy Notebook Handdrawn Line styling */
+.notebook-lines {
+  background-image: linear-gradient(#f1eee3 1px, transparent 1px);
+  background-size: 100% 2.5rem;
+}
+
+/* Custom rounded outline UI focus */
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--color-forest);
+}
+
+/* Standard animation helpers */
+@keyframes pop-in {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pop {
+  animation: pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Cute hand-drawn badge border */
+.hand-badge {
+  border: 2px solid #5C4B37;
+  box-shadow: 2px 2px 0px #5C4B37;
+}
+
+/* Cozy paper tape effect (MT tape aesthetic) */
+.washi-tape-green {
+  background: repeating-linear-gradient(
+    45deg,
+    #9DC08B,
+    #9DC08B 10px,
+    #b2d1a3 10px,
+    #b2d1a3 20px
+  );
+  clip-path: polygon(0% 0%, 100% 0%, 98% 50%, 100% 100%, 0% 100%, 2% 50%);
+}
+
+.washi-tape-coral {
+  background: repeating-linear-gradient(
+    -45deg,
+    #E78895,
+    #E78895 10px,
+    #ff9eab 10px,
+    #ff9eab 20px
+  );
+  clip-path: polygon(0% 10%, 97% 0%, 100% 80%, 98% 100%, 1% 90%, 0% 40%);
+}
+
+.washi-tape-brown {
+  background: repeating-linear-gradient(
+    90deg,
+    #C58940,
+    #C58940 8px,
+    #d49c58 8px,
+    #d49c58 16px
+  );
+  opacity: 0.85;
+}

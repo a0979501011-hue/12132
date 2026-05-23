@@ -1,0 +1,238 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Catch-All Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Core Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Check if the current user is a member of the current trip
+    function isTripMember(tripId) {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/trips/$(tripId)/members/$(request.auth.uid)) ||
+        // Allow primary creator bypass if the members collection is empty or the user is creating the trip
+        get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid
+      );
+    }
+
+    // --- Trips Collection ---
+    match /trips/{tripId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      function isValidTrip(data) {
+        return data.keys().hasAll(['id', 'name', 'startDate', 'endDate', 'creatorId', 'createdAt'])
+          && data.keys().size() == 6
+          && data.id == tripId
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+          && data.startDate is string && data.startDate.size() == 10
+          && data.endDate is string && data.endDate.size() == 10
+          && data.creatorId == request.auth.uid
+          && data.createdAt == request.time;
+      }
+
+      allow create: if isSignedIn() && isValidId(tripId) && isValidTrip(request.resource.data);
+      allow update: if isSignedIn() && isValidId(tripId) 
+        && request.resource.data.creatorId == resource.data.creatorId
+        && request.resource.data.id == resource.data.id
+        && (
+          isOwner(resource.data.creatorId) || isTripMember(tripId)
+        )
+        // Allow updates to name, startDate, endDate, and bannerUrl
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'startDate', 'endDate', 'bannerUrl']);
+      allow delete: if isSignedIn() && isOwner(resource.data.creatorId);
+
+      // --- Members Subcollection ---
+      match /members/{memberId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+
+        function isValidMember(data) {
+          return data.keys().hasAll(['id', 'name', 'avatarUrl', 'joinedAt'])
+            && data.keys().size() == 4
+            && data.id == memberId
+            && data.name is string && data.name.size() > 0 && data.name.size() <= 50
+            && data.avatarUrl is string && data.avatarUrl.size() <= 1000
+            && data.joinedAt == request.time;
+        }
+
+        // Users can join a trip by creating their member document
+        allow create: if isSignedIn() && isValidId(memberId) && memberId == request.auth.uid && isValidMember(request.resource.data);
+        // Only the member can update their own profile info
+        allow update: if isSignedIn() && isOwner(memberId)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.joinedAt == resource.data.joinedAt
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatarUrl']);
+        allow delete: if isSignedIn() && (isOwner(memberId) || get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid);
+      }
+
+      // --- Schedules Subcollection ---
+      match /schedules/{scheduleId} {
+        allow get, list: if isTripMember(tripId);
+
+        function isValidSchedule(data) {
+          return data.keys().hasAll(['id', 'tripId', 'date', 'time', 'title', 'category', 'location', 'mapsUrl', 'notes', 'images', 'createdBy', 'createdAt'])
+            && data.keys().size() == 12
+            && data.id == scheduleId
+            && data.tripId == tripId
+            && data.date is string && data.date.size() == 10
+            && data.time is string && data.time.size() <= 10
+            && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+            && data.category is string && (data.category == '景點' || data.category == '美食' || data.category == '交通' || data.category == '住宿' || data.category == '其他')
+            && data.location is string && data.location.size() <= 500
+            && data.mapsUrl is string && data.mapsUrl.size() <= 1000
+            && data.notes is string && data.notes.size() <= 5000
+            && data.images is list && data.images.size() <= 10
+            && data.createdBy == request.auth.uid
+            && data.createdAt == request.time;
+        }
+
+        allow create: if isTripMember(tripId) && isValidId(scheduleId) && isValidSchedule(request.resource.data);
+        allow update: if isTripMember(tripId) && isValidId(scheduleId)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.tripId == resource.data.tripId
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['date', 'time', 'title', 'category', 'location', 'mapsUrl', 'notes', 'images'])
+          );
+        allow delete: if isTripMember(tripId) && (isOwner(resource.data.createdBy) || get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid);
+      }
+
+      // --- Bookings Subcollection ---
+      match /bookings/{bookingId} {
+        allow get, list: if isTripMember(tripId);
+
+        function isValidBooking(data) {
+          return data.keys().hasAll(['id', 'tripId', 'type', 'title', 'date', 'details', 'cost', 'currency', 'pinCode', 'files', 'confirmedBy', 'createdAt'])
+            && data.keys().size() == 12
+            && data.id == bookingId
+            && data.tripId == tripId
+            && data.type is string && (data.type == 'flight' || data.type == 'accommodation' || data.type == 'car' || data.type == 'ticket')
+            && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+            && data.date is string && data.date.size() <= 30
+            && data.details is string && data.details.size() <= 10000
+            && (data.cost == null || data.cost is number)
+            && data.currency is string && data.currency.size() <= 10
+            && data.pinCode is string && data.pinCode.size() <= 20
+            && data.files is list && data.files.size() <= 10
+            && data.confirmedBy is string
+            && data.createdAt == request.time;
+        }
+
+        allow create: if isTripMember(tripId) && isValidId(bookingId) && isValidBooking(request.resource.data);
+        allow update: if isTripMember(tripId) && isValidId(bookingId)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.tripId == resource.data.tripId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['type', 'title', 'date', 'details', 'cost', 'currency', 'pinCode', 'files', 'confirmedBy'])
+          );
+        allow delete: if isTripMember(tripId) && (isOwner(resource.data.confirmedBy) || get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid);
+      }
+
+      // --- Expenses Subcollection ---
+      match /expenses/{expenseId} {
+        allow get, list: if isTripMember(tripId);
+
+        function isValidExpense(data) {
+          return data.keys().hasAll(['id', 'tripId', 'date', 'description', 'amount', 'currency', 'exchangeRate', 'amountTWD', 'paidBy', 'splitWith', 'category', 'createdAt'])
+            && data.keys().size() == 12
+            && data.id == expenseId
+            && data.tripId == tripId
+            && data.date is string && data.date.size() == 10
+            && data.description is string && data.description.size() > 0 && data.description.size() <= 300
+            && data.amount is number && data.amount > 0
+            && data.currency is string && data.currency.size() <= 10
+            && data.exchangeRate is number
+            && data.amountTWD is number
+            && data.paidBy is string
+            && data.splitWith is list && data.splitWith.size() >= 1
+            && data.category is string && data.category.size() <= 50
+            && data.createdAt == request.time;
+        }
+
+        allow create: if isTripMember(tripId) && isValidId(expenseId) && isValidExpense(request.resource.data);
+        allow update: if isTripMember(tripId) && isValidId(expenseId)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.tripId == resource.data.tripId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['date', 'description', 'amount', 'currency', 'exchangeRate', 'amountTWD', 'paidBy', 'splitWith', 'category'])
+          );
+        allow delete: if isTripMember(tripId) && (isOwner(resource.data.paidBy) || get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid);
+      }
+
+      // --- Journals Subcollection ---
+      match /journals/{journalId} {
+        allow get, list: if isTripMember(tripId);
+
+        function isValidJournal(data) {
+          return data.keys().hasAll(['id', 'tripId', 'date', 'authorId', 'title', 'content', 'images', 'createdAt'])
+            && data.keys().size() == 8
+            && data.id == journalId
+            && data.tripId == tripId
+            && data.date is string && data.date.size() == 10
+            && data.authorId == request.auth.uid
+            && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+            && data.content is string && data.content.size() <= 10000
+            && data.images is list && data.images.size() <= 20
+            && data.createdAt == request.time;
+        }
+
+        allow create: if isTripMember(tripId) && isValidId(journalId) && isValidJournal(request.resource.data);
+        allow update: if isTripMember(tripId) && isValidId(journalId)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.tripId == resource.data.tripId
+          && request.resource.data.authorId == resource.data.authorId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['date', 'title', 'content', 'images'])
+          );
+        allow delete: if isTripMember(tripId) && (isOwner(resource.data.authorId) || get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid);
+      }
+
+      // --- Planning Subcollection ---
+      match /planning/{planningId} {
+        allow get, list: if isTripMember(tripId);
+
+        function isValidPlanningItem(data) {
+          return data.keys().hasAll(['id', 'tripId', 'type', 'text', 'assignedTo', 'completed', 'createdBy', 'createdAt'])
+            && data.keys().size() == 8
+            && data.id == planningId
+            && data.tripId == tripId
+            && data.type is string && (data.type == 'todo' || data.type == 'luggage' || data.type == 'shopping')
+            && data.text is string && data.text.size() > 0 && data.text.size() <= 500
+            && data.assignedTo is string
+            && data.completed is bool
+            && data.createdBy is string
+            && data.createdAt == request.time;
+        }
+
+        allow create: if isTripMember(tripId) && isValidId(planningId) && isValidPlanningItem(request.resource.data);
+        allow update: if isTripMember(tripId) && isValidId(planningId)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.tripId == resource.data.tripId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'assignedTo', 'completed'])
+          );
+        allow delete: if isTripMember(tripId) && (isOwner(resource.data.createdBy) || get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid);
+      }
+    }
+  }
+}

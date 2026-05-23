@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "Trip": {
+      "title": "Trip",
+      "description": "Represents the trip metadata and configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "bannerUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "startDate", "endDate"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Represents a traveler in the group",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name"]
+    },
+    "Schedule": {
+      "title": "Schedule Item",
+      "description": "An event on the trip agenda",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tripId": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["景點", "美食", "交通", "住宿", "其他"] },
+        "location": { "type": "string" },
+        "mapsUrl": { "type": "string" },
+        "notes": { "type": "string" },
+        "images": { "type": "array" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tripId", "date", "time", "title", "category"]
+    },
+    "Booking": {
+      "title": "Booking Document",
+      "description": "Travel, lodging, or event reservation details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tripId": { "type": "string" },
+        "type": { "type": "string", "enum": ["flight", "accommodation", "car", "ticket"] },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "details": { "type": "string" },
+        "cost": { "type": "number" },
+        "currency": { "type": "string" },
+        "pinCode": { "type": "string" },
+        "files": { "type": "array" },
+        "confirmedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tripId", "type", "title", "date"]
+    },
+    "Expense": {
+      "title": "Expense Entry",
+      "description": "Financial ledger record of group spendings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tripId": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "exchangeRate": { "type": "number" },
+        "amountTWD": { "type": "number" },
+        "paidBy": { "type": "string" },
+        "splitWith": { "type": "array" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tripId", "date", "description", "amount", "currency", "paidBy", "splitWith"]
+    },
+    "Journal": {
+      "title": "Journal Entry",
+      "description": "Handwritten travelogue journal story with image blocks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tripId": { "type": "string" },
+        "date": { "type": "string" },
+        "authorId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "images": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tripId", "date", "authorId", "title", "content"]
+    },
+    "PlanningItem": {
+      "title": "Planning Checklist Item",
+      "description": "Todo, baggage, or shopping lists and items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tripId": { "type": "string" },
+        "type": { "type": "string", "enum": ["todo", "luggage", "shopping"] },
+        "text": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tripId", "type", "text", "completed"]
+    }
+  },
+  "firestore": {
+    "/trips/{tripId}": {
+      "schema": "Trip",
+      "description": "Trips collection root mapping"
+    },
+    "/trips/{tripId}/members/{memberId}": {
+      "schema": "Member",
+      "description": "Trip members"
+    },
+    "/trips/{tripId}/schedules/{scheduleId}": {
+      "schema": "Schedule",
+      "description": "Trip visual handbook itinerary schedules"
+    },
+    "/trips/{tripId}/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Reservations for lodging or transit locked by PIN"
+    },
+    "/trips/{tripId}/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Shared trip ledger entries"
+    },
+    "/trips/{tripId}/journals/{journalId}": {
+      "schema": "Journal",
+      "description": "Hand-journaled diary entries"
+    },
+    "/trips/{tripId}/planning/{planningId}": {
+      "schema": "PlanningItem",
+      "description": "Todo, luggage, and shopping checklists"
+    }
+  }
+}

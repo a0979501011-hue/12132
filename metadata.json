@@ -1,0 +1,6 @@
+{
+  "name": "Group Travel Planner",
+  "description": "Collaborative group travel planning manual-style web application featuring schedules, bookings, expenses, checklists, journal logging, and real-time syncing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
