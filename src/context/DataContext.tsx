@@ -705,8 +705,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (cachedTrip) {
       try {
          const tripObj = JSON.parse(cachedTrip);
-         const isAnniversary = tripObj.name && tripObj.name.includes('九周年');
-         if (!isAnniversary || (tripObj.name && (tripObj.name.includes('京都') || tripObj.name.includes('森林手帳') || !hasTienChiaoLi || !hasNara || !hasShimanouchiSpec || !hasNewAvatars || !hasNihonbashiExt || !hasFushimiInariPic || !hasNaraParkPic || !hasOsakaCastlePic || !hasDonQuijoteNight || !hasInnnReturn || !hasUpdatedPrices || !hasUSJTicket || !hasPocketMoney))) {
+         if (tripObj.name && (tripObj.name.includes('京都') || tripObj.name.includes('森林手帳') || !hasTienChiaoLi || !hasNara || !hasShimanouchiSpec || !hasNewAvatars || !hasNihonbashiExt || !hasFushimiInariPic || !hasNaraParkPic || !hasOsakaCastlePic || !hasDonQuijoteNight || !hasInnnReturn || !hasUpdatedPrices || !hasUSJTicket || !hasPocketMoney)) {
           localStorage.removeItem(LOCAL_KEYS.TRIP);
           localStorage.removeItem(LOCAL_KEYS.MEMBERS);
           localStorage.removeItem(LOCAL_KEYS.SCHEDULES);
